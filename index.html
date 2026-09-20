@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>vertexVstore</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+    <header>
+        <div class="logo">VertexVstore</div>
+
+        <div>
+            <p>Downloader</p>
+        </div>
+    </header>
+
+
+    <section class="url-box">
+
+        <label for="url">Download Any Video, Playlist, or Mix</label>
+
+        <div class="input-row">
+
+            <input
+                type="url"
+                id="url"
+                placeholder="URL links: "
+                autocomplete="off"
+            >
+
+            <button id="analyzeBtn">
+                Load
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <section class="url-box">
+
+        <label for="saveDir">Save to folder (optional)</label>
+
+        <div class="input-row">
+
+            <input
+                type="text"
+                id="saveDir"
+                placeholder="Leave blank for default"
+                autocomplete="off"
+            >
+
+            <button id="saveDirMoviesBtn" type="button">Movies</button>
+            <button id="saveDirMusicBtn" type="button">Music</button>
+
+        </div>
+
+    </section>
+
+
+    <section id="videoInfo" class="video-info hidden">
+
+        <img id="thumbnail" src="" alt="Thumbnail">
+
+        <div class="video-details">
+
+            <h2 id="videoTitle">Video title</h2>
+
+            <div id="videoMeta"></div>
+
+        </div>
+
+    </section>
+
+
+    <div id="loading" class="loading hidden">
+
+        <div class="spinner"></div>
+        <span>VertexVstore is Reading...</span>
+	<div class="spinner"></div>	
+
+    </div>
+
+
+    <div id="errorBox" class="error hidden"></div>
+
+
+    <!-- ================================================= -->
+    <!-- PLAYLIST / MIX PICKER (shown instead of formats    -->
+    <!-- when the analyzed URL is a playlist or a mix)      -->
+    <!-- ================================================= -->
+
+    <section id="playlistSection" class="formats hidden">
+
+        <div class="column-header">
+            <div>
+                <h2 id="playlistTitle">Playlist</h2>
+                <p id="playlistCount"></p>
+            </div>
+        </div>
+
+        <div class="playlist-controls">
+
+            <label>
+                <input type="checkbox" id="selectAllPlaylist" checked>
+                Select all
+            </label>
+
+            <label>
+                <input type="radio" name="playlistType" value="video" checked>
+                MP4
+            </label>
+
+            <label>
+                <input type="radio" name="playlistType" value="audio">
+                MP3
+            </label>
+
+            <label>
+                Quality:
+                <select id="playlistQuality">
+                    <option value="best">Best</option>
+                    <option value="1080">1080p</option>
+                    <option value="720">720p</option>
+                    <option value="480">480p</option>
+                </select>
+            </label>
+
+        </div>
+
+        <div id="playlistList" class="format-list">
+            <!-- JavaScript inserts playlist entries here -->
+        </div>
+
+        <button id="addPlaylistToQueueBtn" class="download-btn">
+            Add Selected to Queue
+        </button>
+
+    </section>
+
+
+    <section id="formats" class="formats hidden">
+
+        <!-- AUDIO -->
+
+        <div class="format-column">
+
+            <div class="column-header audio-header">
+
+                <div class="header-icon">♫</div>
+
+                <div>
+                    <h2>MP3 / Audio</h2>
+                    <p>Audio formats</p>
+                </div>
+
+            </div>
+
+
+            <div id="audioList" class="format-list">
+
+                <!-- JavaScript inserts formats here -->
+
+            </div>
+
+
+            <button
+                id="downloadAudio"
+                class="download-btn audio-btn"
+                disabled
+            >
+                Add MP3 to Queue
+            </button>
+
+        </div>
+
+
+        <!-- VIDEO -->
+
+        <div class="format-column">
+
+            <div class="column-header video-header">
+
+                <div class="header-icon">▶</div>
+
+                <div>
+                    <h2>MP4 / Video</h2>
+                    <p>Available video formats</p>
+                </div>
+
+            </div>
+
+
+            <div id="videoList" class="format-list">
+
+                <!-- JavaScript inserts formats here -->
+
+            </div>
+
+
+            <button
+                id="downloadVideo"
+                class="download-btn video-btn"
+                disabled
+            >
+                Add MP4 to Queue
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <!-- ================================================= -->
+    <!-- QUEUE - keep adding videos/playlists, then run all -->
+    <!-- ================================================= -->
+
+    <section id="queueSection" class="status-panel hidden">
+
+        <div class="status-title">
+            <span>List</span>
+        </div>
+
+        <div id="queueList" class="format-list">
+            <!-- JavaScript inserts queue items here -->
+        </div>
+
+        <div id="queueSummary" class="download-details"></div>
+
+        <button id="startQueueBtn" class="download-btn">
+            Download
+        </button>
+
+    </section>
+
+
+    <footer>
+
+	<span>☆☆☆☆☆</span>
+        <span>VertexVstore</span>
+        <span>☆☆☆☆☆</span>
+
+    </footer>
+
+</div>
+
+
+<script src="app.js"></script>
+
+</body>
+</html>
+
