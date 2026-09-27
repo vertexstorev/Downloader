@@ -17,7 +17,7 @@
         <div class="logo">VertexVstore</div>
 
         <div>
-            <p>Downloader</p>
+            <p>Download From Anywhere</p>
         </div>
     </header>
 
@@ -36,7 +36,7 @@
             >
 
             <button id="analyzeBtn">
-                Load
+                Download
             </button>
 
         </div>
@@ -46,14 +46,35 @@
 
     <section class="url-box">
 
-        <label for="saveDir">Save to folder (optional)</label>
+        <label for="sitesDropdown">Supported websites &amp; apps</label>
+
+        <div class="input-row">
+
+            <input
+                type="text"
+                id="sitesFilter"
+                placeholder="Type to filter (e.g. tiktok, facebook)..."
+                autocomplete="off"
+            >
+
+        </div>
+
+        <select id="sitesDropdown" size="1"></select>
+        <div id="sitesLoading" style="font-size:0.85em;opacity:0.7;"></div>
+
+    </section>
+
+
+    <section class="url-box">
+
+        <label for="saveDir">Where to save (optional)</label>
 
         <div class="input-row">
 
             <input
                 type="text"
                 id="saveDir"
-                placeholder="Leave blank for default"
+                placeholder="e.g. Movies/Anime or Music/Podcasts — leave blank for default"
                 autocomplete="off"
             >
 
@@ -75,6 +96,10 @@
 
             <div id="videoMeta"></div>
 
+            <button id="previewToggleBtn" type="button">Show Preview</button>
+
+            <div id="previewContainer" class="hidden" style="margin-top:10px;"></div>
+
         </div>
 
     </section>
@@ -83,8 +108,8 @@
     <div id="loading" class="loading hidden">
 
         <div class="spinner"></div>
-        <span>VertexVstore is Reading...</span>
-	<div class="spinner"></div>	
+	<span>VertexVstore</span>
+	<div class="spinner"></div>
 
     </div>
 
@@ -140,7 +165,7 @@
         </div>
 
         <button id="addPlaylistToQueueBtn" class="download-btn">
-            Add Selected to Queue
+            Add Selected
         </button>
 
     </section>
@@ -219,13 +244,44 @@
 
 
     <!-- ================================================= -->
+    <!-- TORRENTS - magnet link, .torrent URL, or file       -->
+    <!-- ================================================= -->
+
+    <section class="url-box">
+
+        <label for="torrentSource">Torrent</label>
+
+        <div class="input-row">
+
+            <input
+                type="text"
+                id="torrentSource"
+                placeholder="(magnet link or .torrent URL)"
+                autocomplete="off"
+            >
+
+        </div>
+
+        <div class="input-row" style="margin-top:8px;">
+            <label style="font-weight:normal;">Or choose a .torrent file:</label>
+            <input type="file" id="torrentFile" accept=".torrent">
+        </div>
+
+        <button id="addTorrentBtn" type="button" class="download-btn" style="margin-top:8px;">
+            Add Torrent
+        </button>
+
+    </section>
+
+
+    <!-- ================================================= -->
     <!-- QUEUE - keep adding videos/playlists, then run all -->
     <!-- ================================================= -->
 
     <section id="queueSection" class="status-panel hidden">
 
         <div class="status-title">
-            <span>List</span>
+            <span>Download List</span>
         </div>
 
         <div id="queueList" class="format-list">
@@ -235,14 +291,14 @@
         <div id="queueSummary" class="download-details"></div>
 
         <button id="startQueueBtn" class="download-btn">
-            Download
+            Download All
         </button>
 
     </section>
 
 
     <footer>
-
+	
 	<span>☆☆☆☆☆</span>
         <span>VertexVstore</span>
         <span>☆☆☆☆☆</span>

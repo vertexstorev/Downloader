@@ -22,6 +22,16 @@ const videoInfo = document.getElementById("videoInfo");
 const thumbnail = document.getElementById("thumbnail");
 const videoTitle = document.getElementById("videoTitle");
 const videoMeta = document.getElementById("videoMeta");
+const previewToggleBtn = document.getElementById("previewToggleBtn");
+const previewContainer = document.getElementById("previewContainer");
+
+const sitesFilter = document.getElementById("sitesFilter");
+const sitesDropdown = document.getElementById("sitesDropdown");
+const sitesLoading = document.getElementById("sitesLoading");
+
+const torrentSourceInput = document.getElementById("torrentSource");
+const torrentFileInput = document.getElementById("torrentFile");
+const addTorrentBtn = document.getElementById("addTorrentBtn");
 
 const playlistSection = document.getElementById("playlistSection");
 const playlistTitle = document.getElementById("playlistTitle");
@@ -41,6 +51,8 @@ let currentTitle = "";
 let selectedAudio = null;
 let selectedVideo = null;
 let playlistItems = [];
+let allSupportedSites = [];
+let sitesLoaded = false;
 
 // ---------------------------------------------------------
 // QUEUE STATE + PERSISTENCE
@@ -157,6 +169,142 @@ function escapeHtml(value) {
 
 const escapeAttribute = escapeHtml;
 
+/**
+ * Small custom confirm dialog (nicer on mobile than the native
+ * confirm()). Returns a Promise<boolean> - true for the
+ * "confirm" button, false for "cancel" or backdrop tap.
+ */
+function confirmDialog(message, confirmLabel, cancelLabel) {
+    return new Promise((resolve) => {
+        const overlay = document.createElement("div");
+        overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;";
+
+        const box = document.createElement("div");
+        box.style.cssText = "background:#fff;color:#111;border-radius:10px;padding:18px;max-width:360px;width:100%;box-shadow:0 4px 20px rgba(0,0,0,0.3);";
+
+        box.innerHTML = `
+            <div style="margin-bottom:14px;">${escapeHtml(message)}</div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button data-choice="cancel" style="padding:8px 14px;">${escapeHtml(cancelLabel)}</button>
+                <button data-choice="confirm" style="padding:8px 14px;">${escapeHtml(confirmLabel)}</button>
+            </div>
+        `;
+
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        function finish(result) {
+            document.body.removeChild(overlay);
+            resolve(result);
+        }
+
+        overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) finish(false);
+        });
+
+        box.querySelector('[data-choice="confirm"]').addEventListener("click", () => finish(true));
+        box.querySelector('[data-choice="cancel"]').addEventListener("click", () => finish(false));
+    });
+}
+
+// ---------------------------------------------------------
+// SUPPORTED SITES DROPDOWN
+// ---------------------------------------------------------
+
+async function loadSupportedSites() {
+    if (sitesLoaded) return;
+    sitesLoaded = true;
+
+    sitesLoading.textContent = "Loading supported sites list (first time only)...";
+
+    try {
+        const response = await fetch("api.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "list_extractors" })
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.error || "Could not load the site list.");
+        }
+
+        allSupportedSites = data.sites || [];
+        renderSitesDropdown(allSupportedSites);
+        sitesLoading.textContent = `${allSupportedSites.length} sites supported.`;
+    } catch (error) {
+        sitesLoaded = false;
+        sitesLoading.textContent = "Couldn't load the list: " + error.message;
+    }
+}
+
+function renderSitesDropdown(sites) {
+    sitesDropdown.innerHTML = sites.map((s) => `<option value="${escapeAttribute(s)}">${escapeHtml(s)}</option>`).join("");
+}
+
+sitesFilter.addEventListener("focus", loadSupportedSites);
+
+sitesFilter.addEventListener("input", function () {
+    const term = sitesFilter.value.trim().toLowerCase();
+    if (!term) {
+        renderSitesDropdown(allSupportedSites);
+        return;
+    }
+    renderSitesDropdown(allSupportedSites.filter((s) => s.toLowerCase().includes(term)));
+});
+
+// ---------------------------------------------------------
+// PREVIEW (opt-in - only loads when the user asks for it)
+// ---------------------------------------------------------
+
+function extractYouTubeId(url) {
+    const patterns = [
+        /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+        /[?&]v=([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/
+    ];
+    for (const re of patterns) {
+        const m = url.match(re);
+        if (m) return m[1];
+    }
+    return null;
+}
+
+let previewShown = false;
+
+previewToggleBtn.addEventListener("click", function () {
+    previewShown = !previewShown;
+
+    if (!previewShown) {
+        previewContainer.innerHTML = "";
+        hide(previewContainer);
+        previewToggleBtn.textContent = "Show Preview";
+        return;
+    }
+
+    const videoId = extractYouTubeId(currentURL);
+
+    if (videoId) {
+        previewContainer.innerHTML = `
+            <iframe
+                width="100%"
+                height="220"
+                src="https://www.youtube.com/embed/${videoId}"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+            ></iframe>
+        `;
+    } else {
+        previewContainer.innerHTML = `<div class="empty">Embedded preview isn't available for this site — showing the thumbnail above instead.</div>`;
+    }
+
+    show(previewContainer);
+    previewToggleBtn.textContent = "Hide Preview";
+});
+
 // ---------------------------------------------------------
 // ANALYZE (single video/post, OR playlist / mix)
 // ---------------------------------------------------------
@@ -180,6 +328,11 @@ async function analyze() {
     selectedAudio = null;
     selectedVideo = null;
     playlistItems = [];
+
+    previewShown = false;
+    previewContainer.innerHTML = "";
+    hide(previewContainer);
+    previewToggleBtn.textContent = "Show Preview";
 
     clearError();
     hide(formatsSection);
@@ -264,7 +417,7 @@ selectAllPlaylist.addEventListener("change", function () {
     });
 });
 
-addPlaylistToQueueBtn.addEventListener("click", function () {
+addPlaylistToQueueBtn.addEventListener("click", async function () {
     const checked = playlistList.querySelectorAll(".playlist-check:checked");
 
     if (checked.length === 0) {
@@ -286,9 +439,12 @@ addPlaylistToQueueBtn.addEventListener("click", function () {
 
     const directory = saveDirInput.value.trim();
 
-    checked.forEach((box) => {
+    addPlaylistToQueueBtn.disabled = true;
+    addPlaylistToQueueBtn.textContent = "Adding...";
+
+    for (const box of checked) {
         const item = playlistItems[Number(box.dataset.index)];
-        addToQueue({
+        await enqueueWithDuplicateCheck({
             title: item.title,
             url: item.url,
             type,
@@ -296,8 +452,73 @@ addPlaylistToQueueBtn.addEventListener("click", function () {
             audio_quality: "192",
             directory
         });
+    }
+
+    addPlaylistToQueueBtn.disabled = false;
+    addPlaylistToQueueBtn.textContent = "Add Selected to Queue";
+
+    clearError();
+});
+
+// ---------------------------------------------------------
+// TORRENTS
+// ---------------------------------------------------------
+
+addTorrentBtn.addEventListener("click", async function () {
+    const directory = saveDirInput.value.trim();
+    const textSource = torrentSourceInput.value.trim();
+    const file = torrentFileInput.files[0];
+
+    if (!textSource && !file) {
+        showError("Paste a magnet link / .torrent URL, or choose a .torrent file.");
+        return;
+    }
+
+    let source = textSource;
+    let title = textSource || (file ? file.name : "Torrent");
+
+    if (file) {
+        addTorrentBtn.disabled = true;
+        addTorrentBtn.textContent = "Uploading...";
+
+        try {
+            const formData = new FormData();
+            formData.append("action", "upload_torrent_file");
+            formData.append("torrent_file", file);
+
+            const uploadResponse = await fetch("api.php", { method: "POST", body: formData });
+            const uploadData = await uploadResponse.json();
+
+            if (!uploadData.success) {
+                throw new Error(uploadData.error || "Upload failed.");
+            }
+
+            source = uploadData.path;
+            title = file.name;
+        } catch (error) {
+            showError(error.message);
+            addTorrentBtn.disabled = false;
+            addTorrentBtn.textContent = "Add Torrent";
+            return;
+        }
+
+        addTorrentBtn.disabled = false;
+        addTorrentBtn.textContent = "Add Torrent";
+    }
+
+    // Torrents skip the duplicate-file check (no reliable title
+    // until the download actually starts) and go straight to
+    // the queue.
+    addToQueue({
+        title,
+        kind: "torrent",
+        type: "torrent",
+        source,
+        directory
     });
 
+    torrentSourceInput.value = "";
+    torrentFileInput.value = "";
     clearError();
 });
 
@@ -403,12 +624,12 @@ function displayVideo(formats) {
     });
 }
 
-downloadAudio.addEventListener("click", function () {
+downloadAudio.addEventListener("click", async function () {
     if (!selectedAudio) {
         showError("Select an audio format first.");
         return;
     }
-    addToQueue({
+    await enqueueWithDuplicateCheck({
         title: currentTitle || currentURL,
         url: currentURL,
         type: "audio",
@@ -419,12 +640,12 @@ downloadAudio.addEventListener("click", function () {
     clearError();
 });
 
-downloadVideo.addEventListener("click", function () {
+downloadVideo.addEventListener("click", async function () {
     if (!selectedVideo) {
         showError("Select a video format first.");
         return;
     }
-    addToQueue({
+    await enqueueWithDuplicateCheck({
         title: currentTitle || currentURL,
         url: currentURL,
         type: "video",
@@ -438,17 +659,75 @@ downloadVideo.addEventListener("click", function () {
 // QUEUE
 // ---------------------------------------------------------
 
+/**
+ * Before actually queuing an item, checks:
+ * 1) is the same url+type already sitting in the queue?
+ * 2) does a matching file already exist in the target folder?
+ * Either case prompts the user to Replace (queue it with
+ * --force-overwrites) or Leave it (don't queue at all).
+ */
+async function enqueueWithDuplicateCheck(item) {
+    const inQueue = queue.some((q) => q.url === item.url && q.type === item.type);
+
+    if (inQueue) {
+        const replace = await confirmDialog(
+            `"${item.title}" is already in your download queue. Replace it with a fresh download, or leave it as is?`,
+            "Replace",
+            "Leave it"
+        );
+
+        if (!replace) return;
+
+        addToQueue({ ...item, overwrite: true });
+        return;
+    }
+
+    try {
+        const response = await fetch("api.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                action: "check_exists",
+                title: item.title,
+                directory: item.directory || ""
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.exists) {
+            const replace = await confirmDialog(
+                `A file matching "${item.title}" already seems to be on your device (${data.matches[0]}). Replace it, or leave the existing file alone?`,
+                "Replace",
+                "Leave it"
+            );
+
+            if (!replace) return;
+
+            addToQueue({ ...item, overwrite: true });
+            return;
+        }
+    } catch (e) {
+        // If the check itself fails, don't block the download over it.
+    }
+
+    addToQueue(item);
+}
+
 function addToQueue(item) {
     queueIdCounter += 1;
 
     queue.push({
         id: queueIdCounter,
         title: item.title,
+        kind: item.kind || "media", // media (yt-dlp) | torrent (aria2c)
         url: item.url,
+        source: item.source,
         type: item.type,
         format: item.format,
         audio_quality: item.audio_quality || "192",
         directory: item.directory || "",
+        overwrite: !!item.overwrite,
         status: "pending", // pending | downloading | processing | done | error
         job_id: null,
         percent: 0,
@@ -486,6 +765,66 @@ function retryQueueItem(id) {
     }
 }
 
+async function pauseQueueItem(id) {
+    const item = queue.find((q) => q.id === id);
+    if (!item || !item.job_id) return;
+
+    try {
+        const response = await fetch("api.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "pause_job", job_id: item.job_id })
+        });
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error || "Could not pause.");
+        // The poll loop for this item will pick up status "paused"
+        // on its next check and update the UI from there.
+    } catch (error) {
+        showError(error.message);
+    }
+}
+
+async function resumeQueueItem(id) {
+    const item = queue.find((q) => q.id === id);
+    if (!item || !item.job_id) return;
+
+    try {
+        const response = await fetch("api.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "resume_job", job_id: item.job_id })
+        });
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error || "Could not resume.");
+    } catch (error) {
+        showError(error.message);
+    }
+}
+
+async function cancelQueueItem(id) {
+    const item = queue.find((q) => q.id === id);
+    if (!item) return;
+
+    if (item.job_id) {
+        try {
+            await fetch("api.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "cancel_job", job_id: item.job_id })
+            });
+        } catch (error) {
+            // Even if the cancel request itself fails to reach the
+            // server, still reflect the intent locally so the item
+            // doesn't sit stuck as "downloading" forever.
+        }
+    }
+
+    item.status = "cancelled";
+    item.message = "";
+    renderQueue();
+    saveQueueToStorage();
+}
+
 function clearCompletedItems() {
     queue = queue.filter((q) => q.status !== "done");
     renderQueue();
@@ -506,16 +845,18 @@ function renderQueue() {
         const row = document.createElement("div");
         row.className = `queue-item queue-${q.status}`;
 
-        const badge = q.type === "audio" ? "MP3" : "MP4";
+        const badge = q.kind === "torrent" ? "TORRENT" : (q.type === "audio" ? "MP3" : "MP4");
         const statusLabel = {
             pending: "Waiting",
             downloading: "Downloading...",
             processing: "Converting / merging...",
+            paused: "Paused",
+            cancelled: "Cancelled",
             done: "Done",
             error: "Failed"
         }[q.status];
 
-        const showProgress = q.status === "downloading" || q.status === "processing";
+        const showProgress = q.status === "downloading" || q.status === "processing" || q.status === "paused";
         const pct = Math.max(0, Math.min(100, Math.round(q.percent || 0)));
 
         const progressHtml = showProgress ? `
@@ -529,8 +870,18 @@ function renderQueue() {
 
         let actionsHtml = "";
         if (q.status === "pending" || q.status === "done") {
-            actionsHtml = `<button class="queue-remove" data-action="remove" data-id="${q.id}">Complete</button>`;
-        } else if (q.status === "error") {
+            actionsHtml = `<button class="queue-remove" data-action="remove" data-id="${q.id}">Remove</button>`;
+        } else if (q.status === "downloading" || q.status === "processing") {
+            actionsHtml = `
+                <button class="queue-remove" data-action="pause" data-id="${q.id}">Pause</button>
+                <button class="queue-remove" data-action="cancel" data-id="${q.id}">Cancel</button>
+            `;
+        } else if (q.status === "paused") {
+            actionsHtml = `
+                <button class="queue-remove" data-action="resume" data-id="${q.id}">Resume</button>
+                <button class="queue-remove" data-action="cancel" data-id="${q.id}">Cancel</button>
+            `;
+        } else if (q.status === "error" || q.status === "cancelled") {
             actionsHtml = `
                 <button class="queue-remove" data-action="retry" data-id="${q.id}">Retry</button>
                 <button class="queue-remove" data-action="remove" data-id="${q.id}">Remove</button>
@@ -557,8 +908,20 @@ function renderQueue() {
         btn.addEventListener("click", () => retryQueueItem(Number(btn.dataset.id)));
     });
 
+    queueList.querySelectorAll("[data-action='pause']").forEach((btn) => {
+        btn.addEventListener("click", () => pauseQueueItem(Number(btn.dataset.id)));
+    });
+
+    queueList.querySelectorAll("[data-action='resume']").forEach((btn) => {
+        btn.addEventListener("click", () => resumeQueueItem(Number(btn.dataset.id)));
+    });
+
+    queueList.querySelectorAll("[data-action='cancel']").forEach((btn) => {
+        btn.addEventListener("click", () => cancelQueueItem(Number(btn.dataset.id)));
+    });
+
     const pending = queue.filter((q) => q.status === "pending").length;
-    const active = queue.filter((q) => q.status === "downloading" || q.status === "processing").length;
+    const active = queue.filter((q) => q.status === "downloading" || q.status === "processing" || q.status === "paused").length;
     const done = queue.filter((q) => q.status === "done").length;
     const failed = queue.filter((q) => q.status === "error").length;
 
@@ -572,7 +935,7 @@ function renderQueue() {
         clearBtn.addEventListener("click", clearCompletedItems);
     }
 
-    startQueueBtn.disabled = queueRunning || (pending === 0 && active === 0);
+    startQueueBtn.disabled = pending === 0 && active === 0;
 }
 
 startQueueBtn.addEventListener("click", processQueue);
@@ -595,88 +958,127 @@ async function pollJobUntilFinished(jobId, onProgress) {
 
         if (data.status === "done") return data;
 
+        if (data.status === "cancelled") {
+            const err = new Error("Cancelled");
+            err.cancelled = true;
+            throw err;
+        }
+
         if (data.status === "error") {
             const detail = data.log_tail ? " (" + data.log_tail.split("\n").slice(-1)[0] + ")" : "";
             throw new Error((data.error || "Download failed.") + detail);
         }
 
+        // downloading | processing | paused - keep polling. A
+        // paused item just sits here waiting for Resume; polling
+        // stays cheap (one small request every 1.5s).
         await sleep(1500);
     }
 }
 
-// Only items that are 'pending' get started fresh. A 'downloading'
-// or 'processing' item (resumed after a reload) is polled without
-// starting a new job. 'error' items are skipped entirely - they
-// only run again via the explicit Retry button, so a batch of old
-// failures never delays newly queued downloads.
+async function runQueueItem(q) {
+    try {
+        if (!q.job_id || (q.status !== "downloading" && q.status !== "processing" && q.status !== "paused")) {
+            q.status = "downloading";
+            q.percent = 0;
+            q.speed = "";
+            q.eta = "";
+            q.message = "";
+            renderQueue();
+            saveQueueToStorage();
+
+            const startResponse = await fetch("api.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(
+                    q.kind === "torrent"
+                        ? {
+                              action: "start_torrent",
+                              source: q.source,
+                              directory: q.directory
+                          }
+                        : {
+                              action: "start_download",
+                              url: q.url,
+                              type: q.type,
+                              format: q.format,
+                              audio_quality: q.audio_quality,
+                              directory: q.directory,
+                              overwrite: !!q.overwrite
+                          }
+                )
+            });
+
+            const startData = await startResponse.json();
+
+            if (!startData.success) {
+                throw new Error(startData.error || "Could not start download.");
+            }
+
+            q.job_id = startData.job_id;
+            q.directory = startData.directory || q.directory;
+            saveQueueToStorage();
+        }
+
+        await pollJobUntilFinished(q.job_id, (data) => {
+            q.status = data.status;
+            q.percent = data.percent ?? q.percent;
+            q.speed = data.speed || "";
+            q.eta = data.eta || "";
+            renderQueue();
+            saveQueueToStorage();
+        });
+
+        q.status = "done";
+        q.message = "";
+    } catch (error) {
+        q.status = error.cancelled ? "cancelled" : "error";
+        q.message = error.cancelled ? "" : error.message;
+    }
+
+    renderQueue();
+    saveQueueToStorage();
+}
+
+// Runs up to MAX_CONCURRENT_DOWNLOADS items at once via a small
+// worker pool, so adding/starting one download never has to wait
+// on another already in progress. Only 'pending' items are
+// started fresh; a 'downloading'/'processing'/'paused' item
+// (resumed after a reload) is polled without starting a new job.
+// 'error' and 'cancelled' items are skipped entirely - they only
+// run again via the explicit Retry button, so old failures never
+// delay newly queued downloads.
+const MAX_CONCURRENT_DOWNLOADS = 2;
+
 async function processQueue() {
     if (queueRunning) return;
 
+    const runnable = queue.filter((q) =>
+        q.status === "pending" || q.status === "downloading" || q.status === "processing" || q.status === "paused"
+    );
+
+    if (runnable.length === 0) return;
+
     queueRunning = true;
-    startQueueBtn.disabled = true;
     startQueueBtn.textContent = "Downloading...";
+    renderQueue();
 
-    for (const q of queue) {
-        if (q.status === "done" || q.status === "error") {
-            continue;
+    let cursor = 0;
+    async function worker() {
+        while (cursor < runnable.length) {
+            const q = runnable[cursor++];
+            await runQueueItem(q);
         }
-
-        try {
-            if (!q.job_id || (q.status !== "downloading" && q.status !== "processing")) {
-                q.status = "downloading";
-                q.percent = 0;
-                q.speed = "";
-                q.eta = "";
-                q.message = "";
-                renderQueue();
-                saveQueueToStorage();
-
-                const startResponse = await fetch("api.php", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        action: "start_download",
-                        url: q.url,
-                        type: q.type,
-                        format: q.format,
-                        audio_quality: q.audio_quality,
-                        directory: q.directory
-                    })
-                });
-
-                const startData = await startResponse.json();
-
-                if (!startData.success) {
-                    throw new Error(startData.error || "Could not start download.");
-                }
-
-                q.job_id = startData.job_id;
-                q.directory = startData.directory || q.directory;
-                saveQueueToStorage();
-            }
-
-            await pollJobUntilFinished(q.job_id, (data) => {
-                q.status = data.status;
-                q.percent = data.percent ?? q.percent;
-                q.speed = data.speed || "";
-                q.eta = data.eta || "";
-                renderQueue();
-                saveQueueToStorage();
-            });
-
-            q.status = "done";
-            q.message = "";
-        } catch (error) {
-            q.status = "error";
-            q.message = error.message;
-        }
-
-        renderQueue();
-        saveQueueToStorage();
     }
 
+    const workers = [];
+    for (let i = 0; i < MAX_CONCURRENT_DOWNLOADS; i++) {
+        workers.push(worker());
+    }
+    await Promise.all(workers);
+
     queueRunning = false;
-    startQueueBtn.textContent = "Download";
+    startQueueBtn.textContent = "Download All";
     renderQueue();
 }
 
