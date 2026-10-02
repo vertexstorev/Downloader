@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>vertexvstore</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+    <header>
+        <div class="logo">VertexVstore</div>
+
+        <div>
+            <p>Download From Anywhere</p>
+        </div>
+    </header>
+
+
+    <section class="url-box">
+
+        <label for="url">Download Any Video, Playlist, or Mix</label>
+
+        <div class="input-row">
+
+            <input
+                type="url"
+                id="url"
+                placeholder="URL links: "
+                autocomplete="off"
+            >
+
+            <button id="analyzeBtn">
+                Download
+            </button>
+
+        </div>
+
+    </section>
+
+   
+    <section class="url-box">
+
+        <label for="sitesDropdown">Supported websites &amp; apps</label>
+
+        <div class="input-row">
+
+            <input
+                type="text"
+                id="sitesFilter"
+                placeholder="Type to filter (e.g. tiktok, facebook)..."
+                autocomplete="off"
+            >
+
+        </div>
+
+        <select id="sitesDropdown" size="1"></select>
+        <div id="sitesLoading" style="font-size:0.85em;opacity:0.7;"></div>
+
+    </section>
+   
+
+    <section class="url-box">
+
+        <label for="saveDir">Where to save (optional)</label>
+
+        <div class="input-row">
+
+            <input
+                type="text"
+                id="saveDir"
+                placeholder="e.g. Movies/Anime or Music/Podcasts — leave blank for default"
+                autocomplete="off"
+            >
+
+            <button id="saveDirMoviesBtn" type="button">Movies</button>
+            <button id="saveDirMusicBtn" type="button">Music</button>
+
+        </div>
+
+    </section>
+
+
+    <section id="videoInfo" class="video-info hidden">
+
+        <img id="thumbnail" src="" alt="Thumbnail">
+
+        <div class="video-details">
+
+            <h2 id="videoTitle">Video title</h2>
+
+            <div id="videoMeta"></div>
+
+            <button id="previewToggleBtn" type="button">Show Preview</button>
+
+            <div id="previewContainer" class="hidden" style="margin-top:10px;"></div>
+
+        </div>
+
+    </section>
+
+
+    <div id="loading" class="loading hidden">
+
+        <div class="spinner"></div>
+	<span>VertexVstore</span>
+	<div class="spinner"></div>
+
+    </div>
+
+
+    <div id="errorBox" class="error hidden"></div>
+
+
+    <!-- ================================================= -->
+    <!-- PLAYLIST / MIX PICKER (shown instead of formats    -->
+    <!-- when the analyzed URL is a playlist or a mix)      -->
+    <!-- ================================================= -->
+
+    <section id="playlistSection" class="formats hidden">
+
+        <div class="column-header">
+            <div>
+                <h2 id="playlistTitle">Playlist</h2>
+                <p id="playlistCount"></p>
+            </div>
+        </div>
+
+        <div class="playlist-controls">
+
+            <label>
+                <input type="checkbox" id="selectAllPlaylist" checked>
+                Select all
+            </label>
+
+            <label>
+                <input type="radio" name="playlistType" value="video" checked>
+                MP4
+            </label>
+
+            <label>
+                <input type="radio" name="playlistType" value="audio">
+                MP3
+            </label>
+
+            <label>
+                Quality:
+                <select id="playlistQuality">
+                    <option value="best">Best</option>
+                    <option value="1080">1080p</option>
+                    <option value="720">720p</option>
+                    <option value="480">480p</option>
+                </select>
+            </label>
+
+        </div>
+
+        <div id="playlistList" class="format-list">
+            <!-- JavaScript inserts playlist entries here -->
+        </div>
+
+        <button id="addPlaylistToQueueBtn" class="download-btn">
+            Download Selected
+        </button>
+
+    </section>
+
+
+    <section id="formats" class="formats hidden">
+
+        <!-- AUDIO -->
+
+        <div class="format-column">
+
+            <div class="column-header audio-header">
+
+                <div class="header-icon">♫</div>
+
+                <div>
+                    <h2>MP3 / Audio</h2>
+                    <p>Audio formats</p>
+                </div>
+
+            </div>
+
+
+            <div id="audioList" class="format-list">
+
+                <!-- JavaScript inserts formats here -->
+
+            </div>
+
+
+            <button
+                id="downloadAudio"
+                class="download-btn audio-btn"
+                disabled
+            >
+                Download MP3
+            </button>
+
+        </div>
+
+
+        <!-- VIDEO -->
+
+        <div class="format-column">
+
+            <div class="column-header video-header">
+
+                <div class="header-icon">▶</div>
+
+                <div>
+                    <h2>MP4 / Video</h2>
+                    <p>Available video formats</p>
+                </div>
+
+            </div>
+
+
+            <div id="videoList" class="format-list">
+
+                <!-- JavaScript inserts formats here -->
+
+            </div>
+
+
+            <button
+                id="downloadVideo"
+                class="download-btn video-btn"
+                disabled
+            >
+                Download MP4
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <!-- ================================================= -->
+    <!-- TORRENTS - magnet link, .torrent URL, or file       -->
+    <!-- ================================================= -->
+
+    <section class="url-box">
+
+        <label for="torrentSource">Torrent</label>
+
+        <div class="input-row">
+
+            <input
+                type="text"
+                id="torrentSource"
+                placeholder="(magnet link or .torrent URL)"
+                autocomplete="off"
+            >
+
+        </div>
+
+        <div class="input-row" style="margin-top:8px;">
+            <label style="font-weight:normal;">Or choose a .torrent file:</label>
+            <input type="file" id="torrentFile" accept=".torrent">
+        </div>
+
+        <button id="addTorrentBtn" type="button" class="download-btn" style="margin-top:8px;">
+            Add Torrent
+        </button>
+
+    </section>
+
+
+    <!-- ================================================= -->
+    <!-- QUEUE - keep adding videos/playlists, then run all -->
+    <!-- ================================================= -->
+
+    <section id="queueSection" class="status-panel hidden">
+
+        <div class="status-title">
+            <span>Download List</span>
+        </div>
+
+        <div id="queueList" class="format-list">
+            <!-- JavaScript inserts queue items here -->
+        </div>
+
+        <div id="queueSummary" class="download-details"></div>
+
+        <button id="startQueueBtn" class="download-btn">
+            Download All
+        </button>
+
+    </section>
+
+
+    <footer>
+	
+	<span>☆☆☆☆☆</span>
+        <span>VertexVstore</span>
+        <span>☆☆☆☆☆</span>
+
+    </footer>
+
+</div>
+
+
+<script src="app.js"></script>
+
+</body>
+</html>
+
